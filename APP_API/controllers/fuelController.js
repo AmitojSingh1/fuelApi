@@ -1,5 +1,5 @@
 const AWS= require("aws-sdk");
-const { request } = require("express");
+const { request, response } = require("express");
 const config= require("../../config")
 AWS.config.update({
   region:config.REGION,
@@ -102,7 +102,10 @@ function validateInput(entryObject){
     return validate;
     
 }
-function batchEntryWrite(req,res){
+function batchEntryWrite(req){
+resOut={
+    "success":false
+}
 outElements=[];
  req.forEach(element => {
     outElements.push({PutRequest:{Item:element}})
@@ -115,30 +118,40 @@ outElements=[];
         outElements
 }
 }
-    docClient.batchWrite(params, function(err, data) {
-        console.log("acha chalta hun Duaon m yaad rekhna");
+    responseWrite=docClient.batchWrite(params, function(err, data) {
         if (err) {
-            res.status(404)
-            .json(err)
-            return;
+            resOut={"success":false,message:err}
+
+            return resOut
         } else {
-            res.status(200)
-            .json(data);
+            resOut={"success":true,message:data}
         }
     });
-
+return responseWrite;
             }
 const createFuelEntry =function (req,res) {
+    checkOut=[]
+
     var isValidate=validateInput(req.body);
     if(isValidate.success){
-        console.log("m yahan hun");
 
       while(req.body.length){    
-       batchEntryWrite(req.body.splice(0,25),res);
+       checkOut.push(batchEntryWrite(req.body.splice(0,25)));
       }
     }
     else{
         console.log(isValidate.message)
+    }
+    
+    found=checkOut.find(elem=>elem.success=="false");
+
+    if (found){
+        res.status(404)
+        .json(found.data)
+    }
+    else{
+        res.status(200)
+        .json("success");
     }
 };
 
